@@ -8,6 +8,9 @@ final class MovieQuizViewController: UIViewController {
     @IBOutlet private weak var imageView: UIImageView!
     @IBOutlet private weak var textLabel: UILabel!
     
+    @IBOutlet private weak var yesButton: UIButton!
+    @IBOutlet private weak var noButton: UIButton!
+    
     // MARK: - Private Properties
     private var currentQuestionIndex = 0
     private var correctAnswers = 0
@@ -28,6 +31,7 @@ final class MovieQuizViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         show(quiz: convert(model: questions[currentQuestionIndex]))
+        imageView.layer.cornerRadius = 20
     }
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .lightContent
@@ -35,6 +39,7 @@ final class MovieQuizViewController: UIViewController {
     
     // MARK: - IB Actions
     @IBAction private func noButtonClicked(_ sender: UIButton) {
+        blockButtons()
         if questions[currentQuestionIndex].correctAnswer == false {
             showAnswerResult(isCorrect: true)
             correctAnswers += 1
@@ -44,6 +49,7 @@ final class MovieQuizViewController: UIViewController {
     }
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
+        blockButtons()
         if questions[currentQuestionIndex].correctAnswer == true {
             showAnswerResult(isCorrect: true)
             correctAnswers += 1
@@ -64,8 +70,8 @@ final class MovieQuizViewController: UIViewController {
     }
     
     private func showAnswerResult(isCorrect: Bool) {
+        
         imageView.layer.borderWidth = 8
-        imageView.layer.cornerRadius = 20
         imageView.layer.masksToBounds = true
         
         if isCorrect == true {
@@ -76,6 +82,7 @@ final class MovieQuizViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.showNextQuestionOrResults()
         }
+        
     }
     
     private func showNextQuestionOrResults() {
@@ -93,6 +100,7 @@ final class MovieQuizViewController: UIViewController {
                 let newViewModel = convert(model: newQuestion)
                 
                 self.show(quiz: newViewModel)
+                self.unlockButtons()
             }
             alert.addAction(action)
             present(alert, animated: true, completion: nil)
@@ -104,7 +112,18 @@ final class MovieQuizViewController: UIViewController {
             let viewModel = convert(model: nextQuestion)
             
             show(quiz: viewModel)
+            self.unlockButtons()
         }
+    }
+    
+    private func blockButtons() {
+        yesButton.isEnabled = false
+        noButton.isEnabled = false
+    }
+    
+    private func unlockButtons() {
+        yesButton.isEnabled = true
+        noButton.isEnabled = true
     }
     
     //MARK: - Private Models

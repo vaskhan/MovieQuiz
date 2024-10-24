@@ -28,13 +28,14 @@ final class MovieQuizViewController: UIViewController {
     ]
     
     // MARK: - View Life Cycles
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         show(quiz: convert(model: questions[currentQuestionIndex]))
         imageView.layer.cornerRadius = 20
-    }
-    override var preferredStatusBarStyle: UIStatusBarStyle {
-        return .lightContent
     }
     
     // MARK: - IB Actions

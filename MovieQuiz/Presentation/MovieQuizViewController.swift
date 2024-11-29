@@ -9,6 +9,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     @IBOutlet private weak var textLabel: UILabel!
     @IBOutlet private weak var yesButton: UIButton!
     @IBOutlet private weak var noButton: UIButton!
+    @IBOutlet private weak var activityIndicator: UIActivityIndicatorView!
     
     // MARK: - Private Properties
     private var currentQuestionIndex = 0
@@ -27,8 +28,11 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        questionFactory = QuestionFactory(delegate: self)
-        questionFactory?.requestNextQuestion()
+        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
+        activityIndicator.transform = CGAffineTransform(scaleX: 3.0, y: 3.0)
+        activityIndicator.hidesWhenStopped = true
+        showLoadingIndicator()
+        questionFactory?.loadData()
         alertPresenter = AlertPresenter(viewController: self)
         imageView.layer.cornerRadius = 20
     }
@@ -46,6 +50,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             self?.show(quiz: viewModel)
         }
     }
+    
     // MARK: - IB Actions
     @IBAction private func noButtonClicked(_ sender: UIButton) {
         blockButtons()
@@ -67,9 +72,28 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         }
     }
     
+    // MARK: - Public Methods
+    func showLoadingIndicator() {
+        activityIndicator.startAnimating()
+    }
+    
+    func hideLoadingIndicator() {
+        activityIndicator.stopAnimating()
+    }
+    
+    func didLoadDataFromServer() {
+        hideLoadingIndicator()
+        questionFactory?.requestNextQuestion()
+    }
+    
+    func didFailToLoadData(with error: Error) {
+        let errorMessage = (error as NSError).localizedDescription
+        showNetworkError(message: errorMessage)
+    }
+    
     // MARK: - Private Methods
     private func convert(model: QuizQuestion) -> QuizStepViewModel {
-        return QuizStepViewModel(image: UIImage(named: model.image) ?? UIImage(), question: model.text, questionNumber: "\(currentQuestionIndex + 1) / \(questionsAmount)")
+        return QuizStepViewModel(image: UIImage(data: model.image) ?? UIImage(), question: model.text, questionNumber: "\(currentQuestionIndex + 1) / \(questionsAmount)")
     }
     
     private func show(quiz step: QuizStepViewModel) {
@@ -94,28 +118,32 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     private func showNextQuestionOrResults() {
-        imageView.layer.borderWidth = 0
-        imageView.layer.borderColor = UIColor.clear.cgColor
-        
-        if currentQuestionIndex == questionsAmount - 1 {
-            statisticService.store(correct: correctAnswers, total: questionsAmount)
-            let alertModel = AlertModel(
-                title: "Этот раунд окончен!",
-                message: correctAnswers == questionsAmount ? "Поздравляем, Вы ответили на 10 из 10!" :  "Ваш результат \(correctAnswers)/\(questionsAmount)\nКоличество сыгранных квизов: \(statisticService.gamesCount)\nРекорд: \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) (\(statisticService.bestGame.date.dateTimeString))\nСредняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%",
-                buttonText: "Сыграть ещё раз",
-                completion: {[weak self] in
-                    self?.currentQuestionIndex = 0
-                    self?.correctAnswers = 0
-                    self?.questionFactory?.requestNextQuestion()
-                    self?.unlockButtons()
-                })
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             
-            alertPresenter?.showAlert(model: alertModel)
-        } else {
-            currentQuestionIndex += 1
+            imageView.layer.borderWidth = 0
+            imageView.layer.borderColor = UIColor.clear.cgColor
             
-            self.questionFactory?.requestNextQuestion()
-            self.unlockButtons()
+            if currentQuestionIndex == questionsAmount - 1 {
+                statisticService.store(correct: correctAnswers, total: questionsAmount)
+                let alertModel = AlertModel(
+                    title: "Этот раунд окончен!",
+                    message: correctAnswers == questionsAmount ? "Поздравляем, Вы ответили на 10 из 10!" :  "Ваш результат \(correctAnswers)/\(questionsAmount)\nКоличество сыгранных квизов: \(statisticService.gamesCount)\nРекорд: \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) (\(statisticService.bestGame.date.dateTimeString))\nСредняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%",
+                    buttonText: "Сыграть ещё раз",
+                    completion: {[weak self] in
+                        self?.currentQuestionIndex = 0
+                        self?.correctAnswers = 0
+                        self?.questionFactory?.requestNextQuestion()
+                        self?.unlockButtons()
+                    })
+                
+                alertPresenter?.showAlert(model: alertModel)
+            } else {
+                currentQuestionIndex += 1
+                
+                questionFactory?.requestNextQuestion()
+                unlockButtons()
+            }
         }
     }
     
@@ -127,6 +155,19 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     private func unlockButtons() {
         yesButton.isEnabled = true
         noButton.isEnabled = true
+    }
+    
+    private func showNetworkError(message: String) {
+        hideLoadingIndicator()
+        
+        let alert = AlertModel(title: "Ошибка", message: message, buttonText: "Попробовать еще раз", completion: {[weak self] in
+            self?.currentQuestionIndex = 0
+            self?.correctAnswers = 0
+            self?.questionFactory?.requestNextQuestion()
+            self?.unlockButtons()
+        })
+        
+        alertPresenter?.showAlert(model: alert)
     }
 }
 

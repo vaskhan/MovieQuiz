@@ -50,7 +50,8 @@ class QuestionFactory: QuestionFactoryProtocol {
             do {
                 imageData = try Data(contentsOf: movie.resizedImageURL)
             } catch {
-                print("Failed to load image")
+                assertionFailure("Failed to load image")
+                
                 DispatchQueue.main.async {
                     self.delegate?.hideLoadingIndicator()
                 }

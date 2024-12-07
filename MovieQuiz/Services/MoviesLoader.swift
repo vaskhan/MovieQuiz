@@ -6,7 +6,11 @@ protocol MoviesLoading {
 
 struct MoviesLoader: MoviesLoading {
     // MARK: - NetworkClient
-    private let networkClient = NetworkClient()
+    private let networkClient: NetworkRouting
+    
+    init(networkClient: NetworkRouting = NetworkClient()) {
+          self.networkClient = networkClient
+      }
     
     // MARK: - URL
     private var mostPopularMoviesUrl: URL {
@@ -25,6 +29,7 @@ struct MoviesLoader: MoviesLoading {
                     let errorMessage = mostPopularMovies.errorMessage ?? ""
                     if !errorMessage.isEmpty {
                         let error = NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+                        
                         handler(.failure(error))
                         return
                     }

@@ -9,11 +9,13 @@ import XCTest
 @testable import MovieQuiz
 
 final class MovieQuizViewControllerMock: MovieQuizViewControllerProtocol {
+    
     var alertPresenter: AlertPresenter?
     var imageView: UIImageView!
     
     func show(quiz step: QuizStepViewModel) {}
     
+    func highlightImageBorder(isCorrect: Bool) {}
     func showLoadingIndicator() {}
     func hideLoadingIndicator() {}
     

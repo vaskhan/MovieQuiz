@@ -4,7 +4,7 @@
 //
 //  Created by Василий Ханин on 08.12.2024.
 //
-import UIKit
+
 import Foundation
 
 final class MovieQuizPresenter: QuestionFactoryDelegate {
@@ -15,7 +15,7 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
     
     init(viewController: MovieQuizViewControllerProtocol) {
         self.viewController = viewController
-        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self, viewController: viewController)
+        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(networkClient: NetworkClient()), delegate: self, viewController: viewController)
         questionFactory?.loadData()
         viewController.showLoadingIndicator()
     }
@@ -76,7 +76,7 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
     
     func convert(model: QuizQuestion) -> QuizStepViewModel {
         return QuizStepViewModel(
-            image: UIImage(data: model.image) ?? UIImage(),
+            image: model.image,
             question: model.text,
             questionNumber: "\(currentQuestionIndex + 1) / \(questionsAmount)"
         )
@@ -126,21 +126,14 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
         viewController?.imageView.layer.masksToBounds = true
         
         if isCorrect == true {
-            viewController?.imageView.layer.borderColor = UIColor(named: "YP Green")?.cgColor
+            viewController?.highlightImageBorder(isCorrect: isCorrect)
         } else {
-            viewController?.imageView.layer.borderColor = UIColor(named: "YP Red")?.cgColor
+            viewController?.highlightImageBorder(isCorrect: isCorrect)
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self = self else { return }
             proceedToNextQuestionOrResults()
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-                guard let self = self else { return }
-                
-                viewController?.imageView.layer.borderWidth = 0
-                viewController?.imageView.layer.borderColor = UIColor.clear.cgColor
-            }
         }
     }
 }

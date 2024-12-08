@@ -1,7 +1,7 @@
 import XCTest
 @testable import MovieQuiz
 
-class MoviesLoaderTests: XCTestCase {
+final class MoviesLoaderTests: XCTestCase {
     func testSuccessLoading() throws {
         
         let stubNetworkClient = StubNetworkClient(emulateError: false)
@@ -20,7 +20,6 @@ class MoviesLoaderTests: XCTestCase {
                 XCTFail("Unexpected failure")
             }
         }
-        
         waitForExpectations(timeout: 1)
     }
     
@@ -32,7 +31,7 @@ class MoviesLoaderTests: XCTestCase {
             
             
             let expectation = expectation(description: "Loading expectation")
-
+            
             loader.loadMovies { result in
                 switch result {
                 case .failure(let error):
@@ -48,7 +47,7 @@ class MoviesLoaderTests: XCTestCase {
     
     struct StubNetworkClient: NetworkRouting {
         enum TestError: Error {
-        case test
+            case test
         }
         
         let emulateError: Bool

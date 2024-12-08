@@ -42,6 +42,10 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     }
     
     // MARK: - Public Methods
+    func highlightImageBorder(isCorrect: Bool) {
+        imageView.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
+    }
+    
     func showLoadingIndicator() {
         activityIndicator.startAnimating()
     }
@@ -51,13 +55,19 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     }
     
     func didReceiveNextQuestion(question: QuizQuestion?) {
-            presenter.didReceiveNextQuestion(question: question)
+        presenter.didReceiveNextQuestion(question: question)
     }
     
     func show(quiz step: QuizStepViewModel) {
+        imageView.layer.borderColor = UIColor.clear.cgColor
         counterLabel.text = step.questionNumber
-        imageView.image = step.image
         textLabel.text = step.question
+        
+        if let imageData = step.image, let image = UIImage(data: imageData) {
+            imageView.image = image
+        } else {
+            imageView.image = UIImage(systemName: "photo")
+        }
     }
     
     func blockButtons() {

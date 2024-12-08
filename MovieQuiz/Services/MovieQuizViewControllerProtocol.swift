@@ -20,4 +20,6 @@ protocol MovieQuizViewControllerProtocol: AnyObject {
     
     func blockButtons()
     func unlockButtons()
+    
+    func highlightImageBorder(isCorrect: Bool)
 }

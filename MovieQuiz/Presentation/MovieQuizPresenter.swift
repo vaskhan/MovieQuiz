@@ -7,16 +7,25 @@
 import UIKit
 import Foundation
 
-final class MovieQuizPresenter {
+final class MovieQuizPresenter: QuestionFactoryDelegate {
+    
     // MARK: - Public properties
-    let questionsAmount = 10
-    var currentQuestion: QuizQuestion?
-    weak var viewController: MovieQuizViewController?
     var correctAnswers: Int = 0
+    var questionFactory: QuestionFactoryProtocol?
+    
+    init(viewController: MovieQuizViewControllerProtocol) {
+        self.viewController = viewController
+        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self, viewController: viewController)
+        questionFactory?.loadData()
+        viewController.showLoadingIndicator()
+    }
     
     // MARK: - Private properties
     private var currentQuestionIndex = 0
-    
+    private let questionsAmount = 10
+    private var currentQuestion: QuizQuestion?
+    private let statisticService = StatisticService()
+    weak var viewController: MovieQuizViewControllerProtocol?
     
     // MARK: - QuestionFactoryDelegate
     func didReceiveNextQuestion(question: QuizQuestion?) {
@@ -32,6 +41,16 @@ final class MovieQuizPresenter {
         }
     }
     
+    func didLoadDataFromServer() {
+        viewController?.hideLoadingIndicator()
+        questionFactory?.requestNextQuestion()
+    }
+    
+    func didFailToLoadData(with error: Error) {
+        let errorMessage = (error as NSError).localizedDescription
+        viewController?.showNetworkError(message: errorMessage)
+    }
+    
     // MARK: - Public Methods
     func noButtonClicked() {
         didAnswer(isYes: false)
@@ -41,23 +60,14 @@ final class MovieQuizPresenter {
         didAnswer(isYes: true)
     }
     
-    func didAnswer(isYes: Bool) {
-        viewController?.blockButtons()
-        
-        if currentQuestion?.correctAnswer == isYes {
-            viewController?.showAnswerResult(isCorrect: true)
-            viewController?.correctAnswers += 1
-        } else {
-            viewController?.showAnswerResult(isCorrect: false)
-        }
-    }
-    
     func isLastQuestion() -> Bool {
         currentQuestionIndex == questionsAmount - 1
     }
     
-    func resetQuestionIndex() {
+    func restartGame() {
         currentQuestionIndex = 0
+        correctAnswers = 0
+        questionFactory?.requestNextQuestion()
     }
     
     func switchToNextQuestion() {
@@ -72,20 +82,32 @@ final class MovieQuizPresenter {
         )
     }
     
-    func showNextQuestionOrResults() {
+    // MARK: - Private Methods
+    private func didAnswer(isYes: Bool) {
+        viewController?.blockButtons()
+        
+        if currentQuestion?.correctAnswer == isYes {
+            proceedWithAnswer(isCorrect: true)
+            correctAnswers += 1
+        } else {
+            proceedWithAnswer(isCorrect: false)
+        }
+    }
+    
+    func proceedToNextQuestionOrResults() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
             if self.isLastQuestion() {
-                viewController?.statisticService.store(correct: correctAnswers, total: self.questionsAmount)
+                statisticService.store(correct: correctAnswers, total: self.questionsAmount)
                 let alertModel = AlertModel(
                     title: "Этот раунд окончен!",
-                    message: correctAnswers == self.questionsAmount ? "Поздравляем, Вы ответили на 10 из 10!" :  "Ваш результат \(correctAnswers)/\(self.questionsAmount)\nКоличество сыгранных квизов: \(viewController?.statisticService.gamesCount ?? 0)\nРекорд: \(viewController?.statisticService.bestGame.correct ?? 0)/\(viewController?.statisticService.bestGame.total ?? 0) (\(viewController?.statisticService.bestGame.date.dateTimeString ?? "нет данных"))\nСредняя точность: \(String(format: "%.2f", viewController?.statisticService.totalAccuracy ?? 0.0))%",
+                    message: correctAnswers == self.questionsAmount ? "Поздравляем, Вы ответили на 10 из 10!" :  "Ваш результат \(correctAnswers)/\(self.questionsAmount)\nКоличество сыгранных квизов: \(statisticService.gamesCount)\nРекорд: \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) (\(statisticService.bestGame.date.dateTimeString))\nСредняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%",
                     buttonText: "Сыграть ещё раз",
                     completion: {[weak self] in
-                        self?.resetQuestionIndex()
+                        self?.restartGame()
                         self?.correctAnswers = 0
-                        self?.viewController?.questionFactory?.requestNextQuestion()
+                        self?.questionFactory?.requestNextQuestion()
                         self?.viewController?.unlockButtons()
                     })
                 
@@ -93,8 +115,31 @@ final class MovieQuizPresenter {
             } else {
                 switchToNextQuestion()
                 
-                viewController?.questionFactory?.requestNextQuestion()
+                questionFactory?.requestNextQuestion()
                 viewController?.unlockButtons()
+            }
+        }
+    }
+    
+    func proceedWithAnswer(isCorrect: Bool) {
+        viewController?.imageView.layer.borderWidth = 8
+        viewController?.imageView.layer.masksToBounds = true
+        
+        if isCorrect == true {
+            viewController?.imageView.layer.borderColor = UIColor(named: "YP Green")?.cgColor
+        } else {
+            viewController?.imageView.layer.borderColor = UIColor(named: "YP Red")?.cgColor
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self = self else { return }
+            proceedToNextQuestionOrResults()
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                guard let self = self else { return }
+                
+                viewController?.imageView.layer.borderWidth = 0
+                viewController?.imageView.layer.borderColor = UIColor.clear.cgColor
             }
         }
     }

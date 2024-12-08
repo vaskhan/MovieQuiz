@@ -64,7 +64,7 @@ final class MovieQuizUITests: XCTestCase {
     }
     
     func testLastAlert() throws {
-        for i in 1...10 {
+        for _ in 1...10 {
             app.buttons["Yes"].tap()
             sleep(3)
         }

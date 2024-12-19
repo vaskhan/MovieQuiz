@@ -6,17 +6,23 @@ class QuestionFactory: QuestionFactoryProtocol {
     private let moviesLoader: MoviesLoading
     private weak var delegate: QuestionFactoryDelegate?
     private var movies: [MostPopularMovie] = []
+    private var viewController: MovieQuizViewControllerProtocol?
     
     // MARK: - Public methods
-    init(moviesLoader: MoviesLoading, delegate: QuestionFactoryDelegate?) {
-        self.delegate = delegate
-        self.moviesLoader = moviesLoader
+    init(moviesLoader: MoviesLoading,
+         delegate: QuestionFactoryDelegate?,
+         viewController: MovieQuizViewControllerProtocol) {
+            self.delegate = delegate
+            self.moviesLoader = moviesLoader
+            self.viewController = viewController
     }
     
     func loadData() {
         moviesLoader.loadMovies { [weak self] result in
+            
             DispatchQueue.main.async {
                 guard let self = self else { return }
+                
                 switch result {
                 case .success(let mostPopularMovies):
                     self.movies = mostPopularMovies.items
@@ -29,18 +35,19 @@ class QuestionFactory: QuestionFactoryProtocol {
     }
     
     func requestNextQuestion() {
+        
         DispatchQueue.global().async { [weak self] in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
-                self.delegate?.showLoadingIndicator()
+                self.viewController?.showLoadingIndicator()
             }
             
             let index = (0..<self.movies.count).randomElement() ?? 0
             
             guard let movie = self.movies[safe: index] else {
                 DispatchQueue.main.async {
-                    self.delegate?.hideLoadingIndicator()
+                    self.viewController?.hideLoadingIndicator()
                 }
                 return
             }
@@ -50,9 +57,10 @@ class QuestionFactory: QuestionFactoryProtocol {
             do {
                 imageData = try Data(contentsOf: movie.resizedImageURL)
             } catch {
-                print("Failed to load image")
+                assertionFailure("Failed to load image")
+                
                 DispatchQueue.main.async {
-                    self.delegate?.hideLoadingIndicator()
+                    self.viewController?.hideLoadingIndicator()
                 }
                 return
             }
@@ -79,7 +87,7 @@ class QuestionFactory: QuestionFactoryProtocol {
             
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
-                self.delegate?.hideLoadingIndicator()
+                viewController?.hideLoadingIndicator()
                 self.delegate?.didReceiveNextQuestion(question: question)
             }
         }
